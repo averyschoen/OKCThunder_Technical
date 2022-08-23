@@ -1,0 +1,48 @@
+---
+---
+---
+
+**Reading CSV**
+
+```{r}
+library(dplyr)
+library(sjmisc)
+shots_data <- read.csv("shots_data.csv")
+#head(shots_data)
+```
+
+```{r}
+descr(shots_data)
+```
+
+**Classify Shot Zones**
+
+if sqrt(x\^2 + y\^2) \< 23.75 then 2PT Zone
+
+if abs(x) \>= 22 and y \<= 7.8 then 3PT Corner Zone
+
+if sqrt(x\^2 + y\^2) \>= 23.75 and y\>7.8 then 3PT Non Corner Zone
+
+```{r}
+shots_data_t <- shots_data %>%
+    mutate(zone = if_else(abs(.$x) >= 22 & .$y <= 7.8, "C3",
+                          if_else(sqrt(.$x**2 + .$y**2) >= 23.75 & .$y > 7.8, "NC3",
+                                  if_else(sqrt(.$x**2 + .$y**2) < 23.75, "2PT", "UNKOWN"))))
+head(shots_data_t)
+```
+
+**Shot Distribution and Effective Field Goal %**
+
+eFG% = (FMG + (.5 \* 3PM))/FGA
+
+```{r}
+shots_insights <- shots_data_t %>%
+    group_by(team, zone) %>%
+    summarize(FGA = n(),
+              FGM = sum(fgmade)) %>%
+    group_by(team) %>%
+    mutate(shot_dist_per = (FGA/sum(FGA))*100) %>%
+    ungroup() %>%
+    mutate(eFG_per = (100*FGM*if_else(zone %in% c("C3", "NC3"), 1.5, 1)/FGA))
+write.csv(shots_insights, "shots_insights.csv")
+```
